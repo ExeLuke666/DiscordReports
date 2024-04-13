@@ -1,18 +1,14 @@
------------------------------------
----------- Discord Reports --------
----           by Badger         ---
------------------------------------
 -- Config --
-webhookURL = ''
-displayIdentifiers = true;
+local webhookURL = ''
+local displayIdentifiers = true
 
 -- CODE --
-function GetPlayers()
+function GetActivePlayers()
     local players = {}
 
-    for _, i in ipairs(GetActivePlayers()) do
-        if NetworkIsPlayerActive(i) then
-            table.insert(players, i)
+    for _, playerId in ipairs(GetPlayers()) do
+        if NetworkIsPlayerActive(playerId) then
+            table.insert(players, playerId)
         end
     end
 
@@ -20,111 +16,73 @@ function GetPlayers()
 end
 
 RegisterCommand("report", function(source, args, rawCommand)
-    sm = stringsplit(rawCommand, " ");
+    local splitCommand = stringsplit(rawCommand, " ")
     if #args < 2 then
-    	TriggerClientEvent('chatMessage', source, "^1ERROR: Invalid Usage. ^2Proper Usage: /report <id> <reason>")
-    	return;
+        TriggerClientEvent('chatMessage', source, "^1ERROR: Invalid Usage. ^2Proper Usage: /report <id> <reason>")
+        return
     end
-    id = sm[2]
-    if GetPlayerIdentifiers(id)[1] == nil then
-    	TriggerClientEvent('chatMessage', source, "^1ERROR: The specified ID is not currently online...")
-    	return;
+
+    local reportedPlayerId = splitCommand[2]
+    if GetPlayerIdentifiers(reportedPlayerId)[1] == nil then
+        TriggerClientEvent('chatMessage', source, "^1ERROR: The specified ID is not currently online...")
+        return
     end
-	msg = ""
-	local message = ""
-	msg = msg .. " ^9(^6" .. GetPlayerName(source) .. "^9) ^1[^3" .. id .. "^1] "
-	for i = 3, #sm do
-		msg = msg .. sm[i] .. " "
-		message = message .. sm[i] .. " "
-	end
-	-- TriggerClientEvent('chatMessage', source, "^9[^1Badger-Tags^9] ^3Your tag is now ^2active")
-	-- TriggerClientEvent('SandyRestrictions:IsAOP:Return', -1, isSandyAOP, false)
-	if tonumber(id) ~= nil then
-		-- it's a number
-		TriggerClientEvent("Reports:CheckPermission:Client", -1, msg, false)
-		TriggerClientEvent('chatMessage', source, "^9[^1Badger-Reports^9] ^2Report has been submitted! Thank you for helping us :)")
-		if not displayIdentifiers then 
-			sendToDisc("NEW REPORT: _[" .. tostring(id) .. "] " .. GetPlayerName(id) .. "_", 'Reason: **' .. message ..
-				'**', "Reported by: [" .. source .. "] " .. GetPlayerName(source))
-		else 
-			-- Display the identifiers with the report 
-			local ids = ExtractIdentifiers(id);
-			local steam = ids.steam:gsub("steam:", "");
-			local steamDec = tostring(tonumber(steam,16));
-			steam = "https://steamcommunity.com/profiles/" .. steamDec;
-			local gameLicense = ids.license;
-			local discord = ids.discord;
-			sendToDisc("NEW REPORT: _[" .. tostring(id) .. "] " .. GetPlayerName(id) .. "_", 
-				'Reason: **' .. message ..
-				'**\n' ..
-				'Steam: **' .. steam .. '**\n' ..
-				'GameLicense: **' .. gameLicense .. '**\n' ..
-				'Discord Tag: **<@' .. discord:gsub('discord:', '') .. '>**\n' ..
-				'Discord UID: **' .. discord:gsub('discord:', '') .. '**', "Reported by: [" .. source .. "] " .. GetPlayerName(source))
-		end 
-		--print("Runs report command fine and is number for ID") -- TODO - Debug
-	else
-		-- It's not a number
-		TriggerClientEvent('chatMessage', source, "^9[^1Badger-Reports^9] ^1Invalid Format. ^1Proper Format: /report <id> <report>")
-	end
+
+    local message = ""
+    for i = 3, #splitCommand do
+        message = message .. splitCommand[i] .. " "
+    end
+
+    TriggerClientEvent("Reports:CheckPermission:Client", -1, source, reportedPlayerId, message)
+
+    TriggerClientEvent('chatMessage', source, "^9[^1Badger-Reports^9] ^2Report has been submitted! Thank you for helping us :)")
 end)
 
 function sendToDisc(title, message, footer)
-	local embed = {}
-	embed = {
-		{
-			["color"] = 16711680, -- GREEN = 65280 --- RED = 16711680
-			["title"] = "**".. title .."**",
-			["description"] = "" .. message ..  "",
-			["footer"] = {
-				["text"] = footer,
-			},
-		}
-	}
-	-- Start
-	-- TODO Input Webhook
-	PerformHttpRequest(webhookURL, 
-	function(err, text, headers) end, 'POST', json.encode({username = name, embeds = embed}), { ['Content-Type'] = 'application/json' })
-  -- END
+    local embed = {
+        {
+            ["color"] = 16711680, -- RED
+            ["title"] = "**".. title .."**",
+            ["description"] = "" .. message ..  "",
+            ["footer"] = {
+                ["text"] = footer,
+            },
+        }
+    }
+
+    PerformHttpRequest(webhookURL, function(err, text, headers) end, 'POST', json.encode({username = name, embeds = embed}), { ['Content-Type'] = 'application/json' })
 end
 
-local function has_value (tab, val)
-    for index, value in ipairs(tab) do
+local function has_value(tab, val)
+    for _, value in ipairs(tab) do
         if value == val then
             return true
         end
     end
     return false
 end
-function sleep (a) 
-    local sec = tonumber(os.clock() + a); 
-    while (os.clock() < sec) do 
-    end 
-end
-
-hasPermission = {}
-doesNotHavePermission = {}
 
 RegisterNetEvent("Reports:CheckPermission")
-AddEventHandler("Reports:CheckPermission", function(msg, error)
-	local src = source
-	if IsPlayerAceAllowed(src, "BadgerReports.See") then 
-		TriggerClientEvent('chatMessage', src, "^9[^1Report^9] ^8" .. msg)
-	end
+AddEventHandler("Reports:CheckPermission", function(source, reportedPlayerId, message)
+    if IsPlayerAceAllowed(source, "BadgerReports.See") then 
+        TriggerClientEvent('chatMessage', source, "^9[^1Report^9] ^8" .. message)
+    end
 end)
 
 function stringsplit(inputstr, sep)
     if sep == nil then
         sep = "%s"
     end
-    local t={} ; i=1
+    local t = {}
+    local i = 1
     for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
         t[i] = str
         i = i + 1
     end
     return t
 end
-function ExtractIdentifiers(src)
+
+function ExtractIdentifiers(playerId)
     local identifiers = {
         steam = "",
         ip = "",
@@ -134,11 +92,9 @@ function ExtractIdentifiers(src)
         live = ""
     }
 
-    --Loop over all identifiers
-    for i = 0, GetNumPlayerIdentifiers(src) - 1 do
-        local id = GetPlayerIdentifier(src, i)
+    for i = 0, GetNumPlayerIdentifiers(playerId) - 1 do
+        local id = GetPlayerIdentifier(playerId, i)
 
-        --Convert it to a nice table.
         if string.find(id, "steam") then
             identifiers.steam = id
         elseif string.find(id, "ip") then
