@@ -1,17 +1,10 @@
------------------------------------
----------- Discord Reports --------
----           by Badger         ---
------------------------------------
-
 RegisterNetEvent("Reports:CheckPermission:Client")
-AddEventHandler("Reports:CheckPermission:Client", function(msg, error)
-	TriggerServerEvent("Reports:CheckPermission", msg, false)
+AddEventHandler("Reports:CheckPermission:Client", function(message, error)
+    TriggerServerEvent("Reports:CheckPermission", message, false)
 end)
 
---- Functions ---
-function ShowInfo(text)
-	SetNotificationTextEntry("STRING")
-	AddTextComponentSubstringPlayerName(text)
-	DrawNotification(false, false)
+function ShowNotification(message)
+    SetNotificationTextEntry("STRING")
+    AddTextComponentString(message)
+    DrawNotification(false, false)
 end
-
